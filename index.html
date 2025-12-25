@@ -756,6 +756,28 @@
     const plotW = W - pad.l - pad.r;
     const plotH = H - pad.t - pad.b;
 
+    // pattern cache for negatives
+    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+    svg.appendChild(defs);
+    const patternCache = {};
+    function patternIdFor(color) {
+      if (patternCache[color]) return patternCache[color];
+      const pid = `pat-${color.replace(/[^a-zA-Z0-9]/g, "")}-${Math.random().toString(36).slice(2,6)}`;
+      const pat = document.createElementNS("http://www.w3.org/2000/svg", "pattern");
+      pat.setAttribute("id", pid);
+      pat.setAttribute("patternUnits", "userSpaceOnUse");
+      pat.setAttribute("width", "8");
+      pat.setAttribute("height", "8");
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", "M-2 6 L2 2 L6 -2 M2 10 L10 2 M6 14 L14 6");
+      path.setAttribute("stroke", color);
+      path.setAttribute("stroke-width", "2");
+      pat.appendChild(path);
+      defs.appendChild(pat);
+      patternCache[color] = pid;
+      return pid;
+    }
+
     const totals = active.combos.map(sumCombo);
     const maxTotal = totals.length ? Math.max(...totals) : 0;
     const maxEnemy = active.enemies.length ? Math.max(...active.enemies.map(e => e.hp)) : 0;
@@ -841,8 +863,8 @@
         rect.setAttribute("width", barW);
         rect.setAttribute("height", (yBot - yTop));
         const move = active.moves.find(m => m.id === seg.moveId);
-        rect.setAttribute("fill", move ? moveColor(move) : colorFor(seg.moveId));
-        rect.setAttribute("opacity", "0.5");
+        const col = move ? moveColor(move) : colorFor(seg.moveId);
+        rect.setAttribute("fill", `url(#${patternIdFor(col)})`);
         rect.setAttribute("class", "barStroke");
         svg.appendChild(rect);
         accNeg = next;
