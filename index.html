@@ -822,19 +822,27 @@
 
       // stacked negatives downward from top of positives
       let accNeg = accPos;
-      const negW = Math.max(10, barW * 0.6);
-      const negX = x + (barW - negW)/2;
       negatives.forEach(seg => {
         const next = accNeg + seg.dmg; // seg.dmg is negative
         const yTop = yToPx(accNeg);
         const yBot = yToPx(next);
+        const base = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        base.setAttribute("x", x);
+        base.setAttribute("y", yTop);
+        base.setAttribute("width", barW);
+        base.setAttribute("height", (yBot - yTop));
+        base.setAttribute("fill", "#0b1220");
+        base.setAttribute("class", "barStroke");
+        svg.appendChild(base);
+
         const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-        rect.setAttribute("x", negX);
+        rect.setAttribute("x", x);
         rect.setAttribute("y", yTop);
-        rect.setAttribute("width", negW);
+        rect.setAttribute("width", barW);
         rect.setAttribute("height", (yBot - yTop));
         const move = active.moves.find(m => m.id === seg.moveId);
         rect.setAttribute("fill", move ? moveColor(move) : colorFor(seg.moveId));
+        rect.setAttribute("opacity", "0.5");
         rect.setAttribute("class", "barStroke");
         svg.appendChild(rect);
         accNeg = next;
