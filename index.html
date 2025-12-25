@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Damage Combo Prototype</title>
+  <style>
+    :root { --bg:#0b0f14; --panel:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#60a5fa; --line:#334155; }
+    body { margin:0; font-family: "SF Pro Display", "Segoe UI", "Noto Sans JP", system-ui, -apple-system, sans-serif; background:var(--bg); color:var(--text); }
+    header { padding:16px 18px; border-bottom:1px solid var(--line); display:flex; gap:12px; align-items:center; }
+    header h1 { font-size:16px; margin:0; font-weight:700; letter-spacing:.01em; }
+    header .hint { color:var(--muted); font-size:12px; }
+
+    .wrap { display:grid; grid-template-columns: minmax(300px, 360px) 1fr; gap:12px; padding:12px; }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px; }
+    .panel h2 { font-size:13px; margin:0 0 10px; color:var(--muted); font-weight:700; letter-spacing:.02em; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    input, select, button {
+      background:#0f172a; color:var(--text); border:1px solid var(--line); border-radius:10px;
+      padding:9px 10px; font-size:13px;
+    }
+    input { width: 100%; box-sizing:border-box; }
+    button { cursor:pointer; transition: border-color .15s ease, background .15s ease; }
+    button.primary { border-color:#2563eb; background:#0b1b3d; }
+    button.primary:hover { background:#0e234f; }
+    button.danger { border-color:#b91c1c; background:#2a0f15; }
+    button.danger:hover { background:#3a1117; }
+    .tabs { display:flex; gap:8px; flex-wrap:wrap; }
+    .tab { padding:8px 10px; border-radius:999px; border:1px solid var(--line); background:#0f172a; cursor:pointer; font-size:13px; }
+    .tab.active { border-color:#2563eb; background:#0b1b3d; }
+
+    .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+    .list { display:flex; flex-direction:column; gap:8px; }
+    .item { border:1px solid var(--line); border-radius:12px; padding:10px; background:#0f172a; }
+    .item .top { display:flex; justify-content:space-between; gap:10px; align-items:center; }
+    .pill { font-size:12px; color:var(--muted); }
+    .small { font-size:12px; color:var(--muted); }
+    .empty { color:var(--muted); font-size:12px; padding:4px 0; }
+    .moves { display:flex; gap:8px; flex-wrap:wrap; }
+    .moveBtn { border-style:dashed; display:flex; align-items:center; gap:8px; padding:8px 10px; }
+    .moveBtn:hover { border-color:#64748b; }
+    .swatch { width:18px; height:18px; border-radius:6px; border:1px solid var(--line); display:inline-block; }
+    .colorWrap { position:relative; width:18px; height:18px; display:inline-block; }
+    .colorInputOverlay { position:absolute; inset:0; opacity:0; cursor:pointer; }
+    .combos { display:flex; gap:8px; flex-wrap:wrap; }
+    .comboCard { min-width: 220px; flex: 1 1 240px; }
+    .comboCard.selected { outline:2px solid #2563eb; outline-offset:0; }
+    .seg { display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-top:6px; }
+    .divider { height:1px; background:var(--line); margin:10px 0; }
+
+    /* chart */
+    .chartWrap { display:flex; flex-direction:column; gap:10px; }
+    .chartHead { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+    .legend { display:flex; gap:10px; flex-wrap:wrap; color:var(--muted); font-size:12px; }
+    .badge { border:1px solid var(--line); border-radius:999px; padding:6px 10px; background:#0f172a; }
+    svg { width:100%; height:520px; background:#0b1220; border:1px solid var(--line); border-radius:12px; }
+    .axisText { fill:#94a3b8; font-size:11px; }
+    .hpLine { stroke-width:1; stroke-dasharray:6 6; opacity:0.95; }
+    .hpLabel { font-size:11px; font-weight:700; paint-order: stroke fill; }
+    .barStroke { stroke:#0b1220; stroke-width:2; }
+
+    @media (max-width: 899px) {
+      header { flex-direction:column; align-items:flex-start; }
+      .wrap { grid-template-columns: 1fr; padding:10px; }
+      .panel { padding:14px; }
+      .grid2 { grid-template-columns: 1fr; }
+      .combos { flex-direction:column; }
+      .comboCard { width:100%; }
+      .chartHead { align-items:flex-start; }
+      svg { height:420px; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>ダメージ組み合わせプロトタイプ（弱点・抵抗力・特性なし）</h1>
+  <div class="hint">技を登録 → 組み合わせを追加 → 技ボタンで積み上げ / 仮想敵のHPライン追加</div>
+</header>
+
+<div class="wrap">
+  <aside class="panel">
+    <h2>攻撃するポケモン（ページ）</h2>
+    <div class="tabs" id="tabs"></div>
+
+    <div class="divider"></div>
+
+    <div class="row">
+      <input id="newAttackerName" placeholder="例：Nのゾロアークex" />
+      <button class="primary" id="addAttackerBtn">追加</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <h2>技/ダメージ登録</h2>
+    <div class="grid2">
+      <div>
+        <div class="small">技名</div>
+        <input id="moveName" placeholder="例：ランページサンダー" />
+      </div>
+      <div>
+        <div class="small">ダメージ</div>
+        <input id="moveDmg" type="number" min="0" placeholder="250" />
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <button class="primary" id="addMoveBtn">このページに技を追加</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <h2>仮想敵（HPライン）</h2>
+    <div class="grid2">
+      <div>
+        <div class="small">名前</div>
+        <input id="enemyName" placeholder="例：悪リザードンex" />
+      </div>
+      <div>
+        <div class="small">HP</div>
+        <input id="enemyHp" type="number" min="0" placeholder="330" />
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <button class="primary" id="addEnemyBtn">仮想敵に追加</button>
+      <button class="danger" id="clearEnemiesBtn">仮想敵を全削除</button>
+    </div>
+    <div class="divider"></div>
+    <h2>仮想敵リスト（個別削除）</h2>
+    <div class="list" id="enemiesList"></div>
+  </aside>
+
+  <main class="panel chartWrap">
+    <div class="chartHead">
+      <div>
+        <div class="badge" id="pageTitle">—</div>
+      </div>
+      <div class="row">
+        <button class="primary" id="addComboBtn">ダメージの組み合わせを追加</button>
+        <button class="danger" id="deleteComboBtn">選択中の組み合わせを削除</button>
+      </div>
+    </div>
+
+    <div class="legend" id="legend"></div>
+
+    <div class="panel" style="padding:12px;">
+      <h2>技ボタン（クリックで選択中の組み合わせへ追加）</h2>
+      <div class="moves" id="moves"></div>
+      <div class="small" style="margin-top:6px;">色アイコンは参照のみ。✏️で編集、🗑️で削除。</div>
+    </div>
+
+    <div class="panel" style="padding:12px;">
+      <h2>組み合わせリスト（クリックで選択）</h2>
+      <div class="combos" id="combos"></div>
+    </div>
+
+    <div>
+      <svg id="chart" viewBox="0 0 900 520" preserveAspectRatio="none"></svg>
+      <div class="small" style="margin-top:8px;">
+        縦軸＝ダメージ / 横＝組み合わせ（列）。点線＝仮想敵HP（色は各仮想敵に対応）。
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  // -------- state --------
+  const STORAGE_KEY = "pcg-damage-state-v1";
+
+  function createSampleState() {
+    const sampleCombo1 = { id: crypto.randomUUID(), name: "Combo 1", segments: [] };
+    const sampleCombo2 = { id: crypto.randomUUID(), name: "Combo 2", segments: [] };
+    const attackerId = crypto.randomUUID();
+    return {
+      attackers: [
+        {
+          id: attackerId,
+          name: "サンプル：Nのゾロアークex",
+          moves: [
+            { id: crypto.randomUUID(), name: "ランページサンダー", dmg: 250 },
+            { id: crypto.randomUUID(), name: "イノセントフレイム", dmg: 170 },
+            { id: crypto.randomUUID(), name: "ひきさく", dmg: 70 },
+            { id: crypto.randomUUID(), name: "補正：+40", dmg: 40 },
+            { id: crypto.randomUUID(), name: "補正：+50", dmg: 50 },
+          ],
+          combos: [sampleCombo1, sampleCombo2],
+          selectedComboId: sampleCombo1.id,
+          enemies: [
+            { id: crypto.randomUUID(), name: "悪リザードンex", hp: 330 },
+            { id: crypto.randomUUID(), name: "ドラパルトex", hp: 320 }
+          ]
+        }
+      ],
+      activeAttackerId: attackerId
+    };
+  }
+
+  function normalizeState(raw) {
+    if (!raw || !Array.isArray(raw.attackers) || raw.attackers.length === 0) {
+      return createSampleState();
+    }
+    const attackers = raw.attackers.map((a, idx) => {
+      const combos = (Array.isArray(a.combos) && a.combos.length ? a.combos : [{ id: crypto.randomUUID(), name: "Combo 1", segments: [] }]).map((c, ci) => {
+        const segments = Array.isArray(c.segments) ? c.segments.map(s => ({
+          moveId: s.moveId || crypto.randomUUID(),
+          name: s.name || "補正/技",
+          dmg: Number(s.dmg) || 0
+        })) : [];
+        return {
+          id: c.id || crypto.randomUUID(),
+          name: c.name || `Combo ${ci + 1}`,
+          segments
+        };
+      });
+      return {
+        id: a.id || crypto.randomUUID(),
+        name: a.name || `攻撃側 ${idx + 1}`,
+        moves: Array.isArray(a.moves) ? a.moves.map((m, mi) => ({
+          id: m.id || crypto.randomUUID(),
+          name: m.name || `技 ${mi + 1}`,
+          dmg: Number(m.dmg) || 0,
+          color: typeof m.color === "string" ? m.color : undefined
+        })) : [],
+        combos,
+        selectedComboId: combos.find(c => c.id === a.selectedComboId)?.id || combos[0].id,
+        enemies: Array.isArray(a.enemies) ? a.enemies.map((e, ei) => ({
+          id: e.id || crypto.randomUUID(),
+          name: e.name || `仮想敵 ${ei + 1}`,
+          hp: Number(e.hp) || 0,
+          color: normalizeColor(e.color) || colorFor(e.id || "")
+        })) : []
+      };
+    });
+
+    const activeAttackerId = attackers.find(a => a.id === raw.activeAttackerId)?.id || attackers[0].id;
+    return { attackers, activeAttackerId };
+  }
+
+  function persistState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      console.warn("保存に失敗しました", e);
+    }
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return normalizeState(raw ? JSON.parse(raw) : null);
+    } catch (e) {
+      console.warn("読み込みに失敗しました。サンプルで開始します。", e);
+      return createSampleState();
+    }
+  }
+
+  let state = loadState();
+
+  // -------- helpers --------
+  const $ = (id) => document.getElementById(id);
+
+  function commit() {
+    persistState();
+    renderAll();
+  }
+
+  function getActive() {
+    return state.attackers.find(a => a.id === state.activeAttackerId);
+  }
+
+  function sumCombo(combo) {
+    return combo.segments.reduce((s, seg) => s + seg.dmg, 0);
+  }
+
+  function niceMax(val) {
+    // round up to nice tick step
+    const steps = [50, 100, 150, 200, 250, 300, 400, 500, 600, 800, 1000];
+    for (const s of steps) if (val <= s) return s;
+    const pow = Math.pow(10, Math.floor(Math.log10(val)));
+    return Math.ceil(val / pow) * pow;
+  }
+
+  // deterministic-ish color per move id (no libs)
+  function hslToHex(h, s, l) {
+    s /= 100; l /= 100;
+    const f = (n) => {
+      const k = (n + h/30) % 12;
+      const a = s * Math.min(l, 1 - l);
+      const c = l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)));
+      return Math.round(255 * c);
+    };
+    const toHex = (v) => v.toString(16).padStart(2, "0");
+    return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
+  }
+  function colorFor(id) {
+    let h = 0;
+    for (let i=0;i<id.length;i++) h = (h*31 + id.charCodeAt(i)) >>> 0;
+    const hue = h % 360;
+    return hslToHex(hue, 60, 42);
+  }
+  function normalizeColor(val) {
+    if (typeof val !== "string") return null;
+    if (val.startsWith("#")) return val;
+    const m = val.match(/hsl\(\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%\s*\)/i);
+    if (m) return hslToHex(Number(m[1]), Number(m[2]), Number(m[3]));
+    return val;
+  }
+  function moveColor(move) {
+    return normalizeColor(move.color) || colorFor(move.id);
+  }
+  function enemyColor(enemy) {
+    return normalizeColor(enemy.color) || colorFor(enemy.id);
+  }
+
+  // -------- render --------
+  function renderTabs() {
+    const tabs = $("tabs");
+    tabs.innerHTML = "";
+    state.attackers.forEach(a => {
+      const btn = document.createElement("button");
+      btn.className = "tab" + (a.id === state.activeAttackerId ? " active" : "");
+      btn.textContent = a.name;
+      btn.onclick = () => {
+        state.activeAttackerId = a.id;
+        if (!a.selectedComboId && a.combos[0]) a.selectedComboId = a.combos[0].id;
+        commit();
+      };
+      tabs.appendChild(btn);
+    });
+  }
+
+  function renderMoves() {
+    const active = getActive();
+    $("pageTitle").textContent = `攻撃側：${active.name}`;
+    const wrap = $("moves");
+    wrap.innerHTML = "";
+    if (active.moves.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "技を追加するとここにボタンが並びます";
+      wrap.appendChild(empty);
+    } else {
+      active.moves.forEach(m => {
+        const colorInput = document.createElement("input");
+        colorInput.type = "color";
+        colorInput.value = moveColor(m);
+        colorInput.style.display = "none";
+        wrap.appendChild(colorInput);
+
+        const btn = document.createElement("button");
+        btn.className = "moveBtn";
+        btn.style.borderColor = moveColor(m);
+        btn.style.color = moveColor(m);
+        btn.onclick = (ev) => {
+          if (ev.defaultPrevented) return;
+          addSegmentToSelected(m);
+        };
+
+        const colorWrap = document.createElement("span");
+        colorWrap.className = "colorWrap";
+        const swatch = document.createElement("span");
+        swatch.className = "swatch";
+        swatch.style.background = moveColor(m);
+        swatch.onclick = (ev) => {
+          ev.stopPropagation();
+          ev.preventDefault();
+          colorInput.showPicker ? colorInput.showPicker() : colorInput.click();
+        };
+        colorInput.oninput = (ev) => {
+          m.color = ev.target.value;
+          btn.style.borderColor = moveColor(m);
+          btn.style.color = moveColor(m);
+          swatch.style.background = moveColor(m);
+          commit();
+        };
+        colorWrap.appendChild(swatch);
+        btn.appendChild(colorWrap);
+
+        const label = document.createElement("span");
+        label.textContent = `${m.name}（${m.dmg}）`;
+        btn.appendChild(label);
+
+        const edit = document.createElement("span");
+        edit.textContent = "✏️";
+        edit.title = "技名とダメージを編集";
+        edit.style.marginLeft = "8px";
+        edit.style.cursor = "pointer";
+        edit.onclick = (ev) => {
+          ev.stopPropagation();
+          const newName = prompt("技名を編集", m.name);
+          if (newName === null) return;
+          const newDmgStr = prompt("ダメージを編集", String(m.dmg));
+          if (newDmgStr === null) return;
+          const newDmg = Number(newDmgStr);
+          if (Number.isNaN(newDmg)) return;
+          m.name = newName.trim() || m.name;
+          m.dmg = newDmg;
+          commit();
+        };
+        btn.appendChild(edit);
+
+        const del = document.createElement("span");
+        del.textContent = "✖";
+        del.title = "技を削除";
+        del.style.marginLeft = "6px";
+        del.style.cursor = "pointer";
+        del.onclick = (ev) => {
+          ev.stopPropagation();
+          active.moves = active.moves.filter(x => x.id !== m.id);
+          commit();
+        };
+        btn.appendChild(del);
+
+        wrap.appendChild(btn);
+      });
+    }
+
+    const legend = $("legend");
+    legend.innerHTML = "";
+  }
+
+  function renderCombos() {
+    const active = getActive();
+    const wrap = $("combos");
+    wrap.innerHTML = "";
+
+    if (active.combos.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "組み合わせがありません。追加ボタンで作成してください。";
+      wrap.appendChild(empty);
+      return;
+    }
+
+    active.combos.forEach((c, idx) => {
+      const card = document.createElement("div");
+      card.className = "item comboCard" + (c.id === active.selectedComboId ? " selected" : "");
+      card.onclick = () => { active.selectedComboId = c.id; commit(); };
+
+      const total = sumCombo(c);
+      card.innerHTML = `
+        <div class="top">
+          <div><strong>${c.name}</strong> <span class="pill">#${idx+1}</span></div>
+          <div class="pill">合計 ${total}</div>
+        </div>
+        <div class="divider"></div>
+        <div class="small">内訳（クリックで1つ削除）</div>
+      `;
+
+      const segWrap = document.createElement("div");
+      c.segments.forEach((s, i) => {
+        const row = document.createElement("div");
+        row.className = "seg";
+        row.style.cursor = "pointer";
+        row.title = "クリックでこの要素を削除";
+        row.onclick = (ev) => {
+          ev.stopPropagation();
+          c.segments.splice(i, 1);
+          commit();
+        };
+        row.innerHTML = `
+          <span>${s.name}</span>
+          <span style="color:${(() => {
+            const mv = active.moves.find(m => m.id === s.moveId);
+            return mv ? moveColor(mv) : colorFor(s.moveId);
+          })()};">+${s.dmg}</span>
+        `;
+        segWrap.appendChild(row);
+      });
+
+      if (c.segments.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "small";
+        empty.style.marginTop = "8px";
+        empty.textContent = "（まだ何も入っていません）";
+        segWrap.appendChild(empty);
+      }
+
+      card.appendChild(segWrap);
+      wrap.appendChild(card);
+    });
+  }
+
+  function renderEnemies() {
+    const active = getActive();
+    const list = $("enemiesList");
+    list.innerHTML = "";
+
+    if (!active.enemies.length) {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "仮想敵がありません。HPラインを追加してください。";
+      list.appendChild(empty);
+      return;
+    }
+
+    active.enemies.forEach(e => {
+      const cInput = document.createElement("input");
+      cInput.type = "color";
+      cInput.value = enemyColor(e);
+      cInput.style.display = "none";
+      list.appendChild(cInput);
+
+      const item = document.createElement("div");
+      item.className = "item";
+      item.style.display = "flex";
+      item.style.justifyContent = "space-between";
+      item.style.alignItems = "center";
+      const left = document.createElement("div");
+      const swatch = document.createElement("span");
+      swatch.className = "swatch";
+      swatch.style.background = enemyColor(e);
+      swatch.style.cursor = "pointer";
+      swatch.style.marginRight = "8px";
+      swatch.onclick = (ev) => {
+        ev.stopPropagation();
+        ev.preventDefault();
+        cInput.showPicker ? cInput.showPicker() : cInput.click();
+      };
+      cInput.oninput = (ev) => { e.color = ev.target.value; swatch.style.background = enemyColor(e); label.style.color = enemyColor(e); commit(); };
+      const wrapSwatch = document.createElement("span");
+      wrapSwatch.className = "colorWrap";
+      wrapSwatch.style.marginRight = "8px";
+      wrapSwatch.appendChild(swatch);
+      left.appendChild(wrapSwatch);
+
+      const label = document.createElement("span");
+      label.innerHTML = `<strong style="color:${enemyColor(e)}">${e.name}</strong> <span class="pill">HP ${e.hp}</span>`;
+      left.appendChild(label);
+
+      const btn = document.createElement("button");
+      btn.className = "danger";
+      btn.textContent = "削除";
+      btn.onclick = () => {
+        active.enemies = active.enemies.filter(x => x.id !== e.id);
+        commit();
+      };
+      item.appendChild(left);
+      item.appendChild(btn);
+      list.appendChild(item);
+    });
+  }
+
+  function renderChart() {
+    const active = getActive();
+    const svg = $("chart");
+    svg.innerHTML = "";
+
+    const W = 900, H = 520;
+    const pad = { l: 60, r: 20, t: 20, b: 50 };
+    const plotW = W - pad.l - pad.r;
+    const plotH = H - pad.t - pad.b;
+
+    const totals = active.combos.map(sumCombo);
+    const maxTotal = totals.length ? Math.max(...totals) : 0;
+    const maxEnemy = active.enemies.length ? Math.max(...active.enemies.map(e => e.hp)) : 0;
+    const ymax = niceMax(Math.max(200, maxTotal, maxEnemy));
+    const yToPx = (y) => pad.t + plotH - (y / ymax) * plotH;
+
+    // axes
+    const axis = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    axis.setAttribute("d", `M ${pad.l} ${pad.t} V ${pad.t+plotH} H ${pad.l+plotW}`);
+    axis.setAttribute("stroke", "#334155");
+    axis.setAttribute("fill", "none");
+    axis.setAttribute("stroke-width", "2");
+    svg.appendChild(axis);
+
+    // y ticks
+    const ticks = 5;
+    for (let i=0;i<=ticks;i++) {
+      const yVal = (ymax/ticks)*i;
+      const y = yToPx(yVal);
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", pad.l);
+      line.setAttribute("x2", pad.l+plotW);
+      line.setAttribute("y1", y);
+      line.setAttribute("y2", y);
+      line.setAttribute("stroke", i===0 ? "#334155" : "#1f2a3a");
+      line.setAttribute("stroke-width", "1");
+      svg.appendChild(line);
+
+      const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      txt.setAttribute("x", pad.l - 10);
+      txt.setAttribute("y", y + 4);
+      txt.setAttribute("text-anchor", "end");
+      txt.setAttribute("class", "axisText");
+      txt.textContent = Math.round(yVal);
+      svg.appendChild(txt);
+    }
+
+    // bars
+    const n = Math.max(active.combos.length, 1);
+    const gap = 16;
+    const barW = Math.max(26, (plotW - gap*(n+1)) / n);
+    active.combos.forEach((c, i) => {
+      const x = pad.l + gap + i*(barW + gap);
+
+      // stacked segments bottom-up
+      let acc = 0;
+      c.segments.forEach(seg => {
+        const y0 = yToPx(acc);
+        const y1 = yToPx(acc + seg.dmg);
+        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        rect.setAttribute("x", x);
+        rect.setAttribute("y", y1);
+        rect.setAttribute("width", barW);
+        rect.setAttribute("height", (y0 - y1));
+        // resolve color: segment may have moveId only; look up move
+        const move = active.moves.find(m => m.id === seg.moveId);
+        rect.setAttribute("fill", move ? moveColor(move) : colorFor(seg.moveId));
+        rect.setAttribute("class", "barStroke");
+        svg.appendChild(rect);
+        acc += seg.dmg;
+      });
+
+      // total label
+      const total = sumCombo(c);
+      const ty = yToPx(total) - 6;
+      const tt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      tt.setAttribute("x", x + barW/2);
+      tt.setAttribute("y", Math.max(pad.t+12, ty));
+      tt.setAttribute("text-anchor", "middle");
+      tt.setAttribute("class", "axisText");
+      tt.textContent = total ? `${total}` : "";
+      svg.appendChild(tt);
+
+      // x label
+      const xl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      xl.setAttribute("x", x + barW/2);
+      xl.setAttribute("y", pad.t + plotH + 28);
+      xl.setAttribute("text-anchor", "middle");
+      xl.setAttribute("class", "axisText");
+      xl.textContent = c.name;
+      svg.appendChild(xl);
+    });
+
+    // enemy hp lines (draw last to be前面)
+    const placedYs = [];
+    [...active.enemies].sort((a,b) => b.hp - a.hp).forEach((e, enemyIdx) => {
+      const y = yToPx(e.hp);
+      const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      l.setAttribute("x1", pad.l);
+      l.setAttribute("x2", pad.l+plotW);
+      l.setAttribute("y1", y);
+      l.setAttribute("y2", y);
+      l.setAttribute("class", "hpLine");
+      l.setAttribute("stroke", enemyColor(e));
+      svg.appendChild(l);
+
+      // avoid label overlap by shifting upward if too close
+      let labelY = y - 6;
+      for (const py of placedYs) {
+        if (Math.abs(labelY - py) < 14) labelY = py - 14;
+      }
+      labelY = Math.max(pad.t + 12, labelY);
+      placedYs.push(labelY);
+
+      const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      t.setAttribute("x", pad.l + 6);
+      t.setAttribute("y", labelY);
+      t.setAttribute("class", "hpLabel");
+      t.setAttribute("fill", enemyColor(e));
+      t.setAttribute("stroke", "#0b0f14");
+      t.setAttribute("stroke-width", "3");
+      t.setAttribute("stroke-linejoin", "round");
+      t.textContent = `${e.name} HP${e.hp}`;
+      svg.appendChild(t);
+
+      // reach markers on this line for combos that meet/exceed HP
+      active.combos.forEach((c, i) => {
+        const total = totals[i] || 0;
+        if (total < e.hp) return;
+        const cx = pad.l + gap + i*(barW + gap) + barW/2;
+        // double-stroked highlight on the HP line to indicate到達
+        const backLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        backLine.setAttribute("x1", cx - barW*0.4);
+        backLine.setAttribute("x2", cx + barW*0.4);
+        backLine.setAttribute("y1", y);
+        backLine.setAttribute("y2", y);
+        backLine.setAttribute("stroke", "#0b0f14");
+        backLine.setAttribute("stroke-width", 8);
+        backLine.setAttribute("stroke-linecap", "round");
+        backLine.setAttribute("opacity", "0.85");
+        svg.appendChild(backLine);
+
+        const segLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        segLine.setAttribute("x1", cx - barW*0.4);
+        segLine.setAttribute("x2", cx + barW*0.4);
+        segLine.setAttribute("y1", y);
+        segLine.setAttribute("y2", y);
+        segLine.setAttribute("stroke", enemyColor(e));
+        segLine.setAttribute("stroke-width", 5);
+        segLine.setAttribute("stroke-linecap", "round");
+        segLine.setAttribute("opacity", "0.95");
+        svg.appendChild(segLine);
+      });
+    });
+  }
+
+  function renderAll() {
+    renderTabs();
+    renderMoves();
+    renderCombos();
+    renderEnemies();
+    renderChart();
+  }
+
+  // -------- actions --------
+  function addSegmentToSelected(move) {
+    const active = getActive();
+    const combo = active.combos.find(c => c.id === active.selectedComboId);
+    if (!combo) return;
+
+    combo.segments.push({
+      moveId: move.id,
+      name: move.name,
+      dmg: Number(move.dmg) || 0
+    });
+    commit();
+  }
+
+  $("addAttackerBtn").onclick = () => {
+    const name = $("newAttackerName").value.trim();
+    if (!name) return;
+    const a = {
+      id: crypto.randomUUID(),
+      name,
+      moves: [],
+      combos: [{ id: crypto.randomUUID(), name: "Combo 1", segments: [] }],
+      selectedComboId: null,
+      enemies: []
+    };
+    a.selectedComboId = a.combos[0].id;
+    state.attackers.push(a);
+    state.activeAttackerId = a.id;
+    $("newAttackerName").value = "";
+    commit();
+  };
+
+  $("addMoveBtn").onclick = () => {
+    const active = getActive();
+    const name = $("moveName").value.trim();
+    const dmg = Number($("moveDmg").value);
+    if (!name || Number.isNaN(dmg)) return;
+    active.moves.push({ id: crypto.randomUUID(), name, dmg });
+    $("moveName").value = "";
+    $("moveDmg").value = "";
+    commit();
+  };
+
+  $("addComboBtn").onclick = () => {
+    const active = getActive();
+    const next = active.combos.length + 1;
+    const c = { id: crypto.randomUUID(), name: `Combo ${next}`, segments: [] };
+    active.combos.push(c);
+    active.selectedComboId = c.id;
+    commit();
+  };
+
+  $("deleteComboBtn").onclick = () => {
+    const active = getActive();
+    if (!active.selectedComboId) return;
+    const idx = active.combos.findIndex(c => c.id === active.selectedComboId);
+    if (idx < 0) return;
+    active.combos.splice(idx, 1);
+    if (active.combos.length === 0) {
+      const fallback = { id: crypto.randomUUID(), name: "Combo 1", segments: [] };
+      active.combos.push(fallback);
+      active.selectedComboId = fallback.id;
+    } else {
+      active.selectedComboId = active.combos[0]?.id ?? null;
+    }
+    commit();
+  };
+
+  $("addEnemyBtn").onclick = () => {
+    const active = getActive();
+    const name = $("enemyName").value.trim();
+    const hp = Number($("enemyHp").value);
+    if (!name || Number.isNaN(hp)) return;
+    const id = crypto.randomUUID();
+    active.enemies.push({ id, name, hp, color: colorFor(id) });
+    $("enemyName").value = "";
+    $("enemyHp").value = "";
+    commit();
+  };
+
+  $("clearEnemiesBtn").onclick = () => {
+    const active = getActive();
+    active.enemies = [];
+    commit();
+  };
+
+  // initial
+  persistState();
+  renderAll();
+</script>
+</body>
+</html>
