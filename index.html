@@ -877,7 +877,7 @@
         segLine.setAttribute("stroke", colorFor(String(e.hp)));
         segLine.setAttribute("stroke-width", 5);
         segLine.setAttribute("stroke-linecap", "round");
-        segLine.setAttribute("opacity", total >= e.hp ? "0.95" : "0.25");
+        segLine.setAttribute("opacity", total >= e.hp ? "0.95" : "0");
         svg.appendChild(segLine);
       });
     });
