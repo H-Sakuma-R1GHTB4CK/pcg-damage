@@ -685,27 +685,44 @@
       return;
     }
 
-    active.enemies.forEach(e => {
-      const item = document.createElement("div");
-      item.className = "item";
-      item.style.display = "flex";
-      item.style.justifyContent = "space-between";
-      item.style.alignItems = "center";
-      const left = document.createElement("div");
-      const label = document.createElement("span");
-      label.innerHTML = `<strong>${e.name}</strong> <span class="pill">HP ${e.hp}</span>`;
-      left.appendChild(label);
+    const grouped = active.enemies.reduce((acc, e) => {
+      acc[e.hp] = acc[e.hp] || [];
+      acc[e.hp].push(e);
+      return acc;
+    }, {});
 
-      const btn = document.createElement("button");
-      btn.className = "danger";
-      btn.textContent = "削除";
-      btn.onclick = () => {
-        active.enemies = active.enemies.filter(x => x.id !== e.id);
-        commit();
-      };
-      item.appendChild(left);
-      item.appendChild(btn);
-      list.appendChild(item);
+    Object.keys(grouped).sort((a,b) => Number(b) - Number(a)).forEach(hpKey => {
+      const color = colorFor(String(hpKey));
+      const header = document.createElement("div");
+      header.className = "item";
+      header.style.display = "flex";
+      header.style.alignItems = "center";
+      header.style.gap = "8px";
+      header.innerHTML = `<span style="display:inline-block;width:14px;height:14px;border-radius:4px;border:1px solid var(--line);background:${color};"></span><strong>HP ${hpKey}</strong>`;
+      list.appendChild(header);
+
+      grouped[hpKey].forEach(e => {
+        const item = document.createElement("div");
+        item.className = "item";
+        item.style.display = "flex";
+        item.style.justifyContent = "space-between";
+        item.style.alignItems = "center";
+        const left = document.createElement("div");
+        const label = document.createElement("span");
+        label.innerHTML = `<strong>${e.name}</strong>`;
+        left.appendChild(label);
+
+        const btn = document.createElement("button");
+        btn.className = "danger";
+        btn.textContent = "削除";
+        btn.onclick = () => {
+          active.enemies = active.enemies.filter(x => x.id !== e.id);
+          commit();
+        };
+        item.appendChild(left);
+        item.appendChild(btn);
+        list.appendChild(item);
+      });
     });
   }
 
@@ -758,8 +775,8 @@
 
     // bars
     const n = Math.max(active.combos.length, 1);
-    const gap = 16;
-    const barW = Math.max(26, (plotW - gap*(n+1)) / n);
+    const gap = 12;
+    const barW = Math.max(18, (plotW - gap*(n+1)) / n);
     active.combos.forEach((c, i) => {
       const x = pad.l + gap + i*(barW + gap);
 
@@ -812,7 +829,7 @@
       l.setAttribute("y1", y);
       l.setAttribute("y2", y);
       l.setAttribute("class", "hpLine");
-      l.setAttribute("stroke", colorFor(e.id));
+      l.setAttribute("stroke", colorFor(String(e.hp)));
       svg.appendChild(l);
 
       // avoid label overlap by shifting upward if too close
@@ -827,7 +844,7 @@
       t.setAttribute("x", pad.l + 6);
       t.setAttribute("y", labelY);
       t.setAttribute("class", "hpLabel");
-      t.setAttribute("fill", colorFor(e.id));
+      t.setAttribute("fill", colorFor(String(e.hp)));
       t.setAttribute("stroke", "#0b0f14");
       t.setAttribute("stroke-width", "3");
       t.setAttribute("stroke-linejoin", "round");
@@ -856,7 +873,7 @@
         segLine.setAttribute("x2", cx + barW*0.4);
         segLine.setAttribute("y1", y);
         segLine.setAttribute("y2", y);
-        segLine.setAttribute("stroke", colorFor(e.id));
+        segLine.setAttribute("stroke", colorFor(String(e.hp)));
         segLine.setAttribute("stroke-width", 5);
         segLine.setAttribute("stroke-linecap", "round");
         segLine.setAttribute("opacity", "0.95");
