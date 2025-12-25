@@ -128,6 +128,10 @@
     }
     .pickerFooter { display:flex; justify-content:space-between; align-items:center; gap:10px; }
     .pickerPreview { width:46px; height:28px; border-radius:8px; border:1px solid var(--line); }
+    .groupCard { border:1px solid var(--line); border-radius:12px; padding:10px; background:#0f172a; margin-bottom:10px; }
+    .groupHeader { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+    .groupRows { display:flex; flex-direction:column; gap:6px; padding-left:10px; }
+    .groupRow { display:flex; justify-content:space-between; align-items:center; border:1px dashed var(--line); border-radius:10px; padding:6px 8px; background:#0b1220; }
     .combos { display:flex; gap:8px; flex-wrap:wrap; }
     .comboCard { min-width: 220px; flex: 1 1 240px; }
     .comboCard.selected { outline:2px solid #2563eb; outline-offset:0; }
@@ -693,25 +697,21 @@
 
     Object.keys(grouped).sort((a,b) => Number(b) - Number(a)).forEach(hpKey => {
       const color = colorFor(String(hpKey));
+      const card = document.createElement("div");
+      card.className = "groupCard";
+
       const header = document.createElement("div");
-      header.className = "item";
-      header.style.display = "flex";
-      header.style.alignItems = "center";
-      header.style.gap = "8px";
+      header.className = "groupHeader";
       header.innerHTML = `<span style="display:inline-block;width:14px;height:14px;border-radius:4px;border:1px solid var(--line);background:${color};"></span><strong>HP ${hpKey}</strong>`;
-      list.appendChild(header);
+      card.appendChild(header);
 
+      const rows = document.createElement("div");
+      rows.className = "groupRows";
       grouped[hpKey].forEach(e => {
-        const item = document.createElement("div");
-        item.className = "item";
-        item.style.display = "flex";
-        item.style.justifyContent = "space-between";
-        item.style.alignItems = "center";
-        const left = document.createElement("div");
+        const row = document.createElement("div");
+        row.className = "groupRow";
         const label = document.createElement("span");
-        label.innerHTML = `<strong>${e.name}</strong>`;
-        left.appendChild(label);
-
+        label.innerHTML = `<span style="margin-right:6px;">・</span>${e.name}`;
         const btn = document.createElement("button");
         btn.className = "danger";
         btn.textContent = "削除";
@@ -719,10 +719,12 @@
           active.enemies = active.enemies.filter(x => x.id !== e.id);
           commit();
         };
-        item.appendChild(left);
-        item.appendChild(btn);
-        list.appendChild(item);
+        row.appendChild(label);
+        row.appendChild(btn);
+        rows.appendChild(row);
       });
+      card.appendChild(rows);
+      list.appendChild(card);
     });
   }
 
