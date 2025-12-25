@@ -857,25 +857,26 @@
       active.combos.forEach((c, i) => {
         const total = totals[i] || 0;
         const cx = pad.l + gap + i*(barW + gap) + barW/2;
+        const half = Math.max(4, barW * 0.25);
         // double-stroked highlight on the HP line to indicate到達
         const backLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
-        backLine.setAttribute("x1", cx - barW*0.4);
-        backLine.setAttribute("x2", cx + barW*0.4);
+        backLine.setAttribute("x1", cx - half);
+        backLine.setAttribute("x2", cx + half);
         backLine.setAttribute("y1", y);
         backLine.setAttribute("y2", y);
         backLine.setAttribute("stroke", "#0b0f14");
-        backLine.setAttribute("stroke-width", 8);
+        backLine.setAttribute("stroke-width", 6);
         backLine.setAttribute("stroke-linecap", "round");
         backLine.setAttribute("opacity", "0.85");
         svg.appendChild(backLine);
 
         const segLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
-        segLine.setAttribute("x1", cx - barW*0.4);
-        segLine.setAttribute("x2", cx + barW*0.4);
+        segLine.setAttribute("x1", cx - half);
+        segLine.setAttribute("x2", cx + half);
         segLine.setAttribute("y1", y);
         segLine.setAttribute("y2", y);
         segLine.setAttribute("stroke", colorFor(String(e.hp)));
-        segLine.setAttribute("stroke-width", 5);
+        segLine.setAttribute("stroke-width", 3);
         segLine.setAttribute("stroke-linecap", "round");
         segLine.setAttribute("opacity", total >= e.hp ? "0.95" : "0");
         svg.appendChild(segLine);
