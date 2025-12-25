@@ -37,11 +37,8 @@
     .small { font-size:12px; color:var(--muted); }
     .empty { color:var(--muted); font-size:12px; padding:4px 0; }
     .moves { display:flex; gap:8px; flex-wrap:wrap; }
-    .moveBtn { border-style:dashed; display:flex; align-items:center; gap:8px; padding:8px 10px; }
+    .moveBtn { border-style:dashed; padding:8px 10px; }
     .moveBtn:hover { border-color:#64748b; }
-    .swatch { width:18px; height:18px; border-radius:6px; border:1px solid var(--line); display:inline-block; }
-    .colorWrap { position:relative; width:18px; height:18px; display:inline-block; }
-    .colorInputOverlay { position:absolute; inset:0; opacity:0; cursor:pointer; }
     .combos { display:flex; gap:8px; flex-wrap:wrap; }
     .comboCard { min-width: 220px; flex: 1 1 240px; }
     .comboCard.selected { outline:2px solid #2563eb; outline-offset:0; }
@@ -216,16 +213,14 @@
         moves: Array.isArray(a.moves) ? a.moves.map((m, mi) => ({
           id: m.id || crypto.randomUUID(),
           name: m.name || `技 ${mi + 1}`,
-          dmg: Number(m.dmg) || 0,
-          color: typeof m.color === "string" ? m.color : undefined
+          dmg: Number(m.dmg) || 0
         })) : [],
         combos,
         selectedComboId: combos.find(c => c.id === a.selectedComboId)?.id || combos[0].id,
         enemies: Array.isArray(a.enemies) ? a.enemies.map((e, ei) => ({
           id: e.id || crypto.randomUUID(),
           name: e.name || `仮想敵 ${ei + 1}`,
-          hp: Number(e.hp) || 0,
-          color: normalizeColor(e.color) || colorFor(e.id || "")
+          hp: Number(e.hp) || 0
         })) : []
       };
     });
@@ -296,19 +291,6 @@
     const hue = h % 360;
     return hslToHex(hue, 60, 42);
   }
-  function normalizeColor(val) {
-    if (typeof val !== "string") return null;
-    if (val.startsWith("#")) return val;
-    const m = val.match(/hsl\(\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%\s*\)/i);
-    if (m) return hslToHex(Number(m[1]), Number(m[2]), Number(m[3]));
-    return val;
-  }
-  function moveColor(move) {
-    return normalizeColor(move.color) || colorFor(move.id);
-  }
-  function enemyColor(enemy) {
-    return normalizeColor(enemy.color) || colorFor(enemy.id);
-  }
 
   // -------- render --------
   function renderTabs() {
@@ -341,34 +323,9 @@
       active.moves.forEach(m => {
         const btn = document.createElement("button");
         btn.className = "moveBtn";
-        btn.style.borderColor = moveColor(m);
-        btn.style.color = moveColor(m);
-        btn.onclick = (ev) => {
-          if (ev.target.closest(".colorWrap")) return;
-          addSegmentToSelected(m);
-        };
-
-        const colorWrap = document.createElement("span");
-        colorWrap.className = "colorWrap";
-        const swatch = document.createElement("span");
-        swatch.className = "swatch";
-        swatch.style.background = moveColor(m);
-        const colorInput = document.createElement("input");
-        colorInput.type = "color";
-        colorInput.value = moveColor(m);
-        colorInput.className = "colorInputOverlay";
-        colorInput.onclick = (ev) => ev.stopPropagation();
-        colorInput.onmousedown = (ev) => ev.stopPropagation();
-        colorInput.oninput = (ev) => {
-          m.color = ev.target.value;
-          btn.style.borderColor = moveColor(m);
-          btn.style.color = moveColor(m);
-          swatch.style.background = moveColor(m);
-          commit();
-        };
-        colorWrap.appendChild(colorInput);
-        colorWrap.appendChild(swatch);
-        btn.appendChild(colorWrap);
+        btn.style.borderColor = colorFor(m.id);
+        btn.style.color = colorFor(m.id);
+        btn.onclick = () => addSegmentToSelected(m);
 
         const label = document.createElement("span");
         label.textContent = `${m.name}（${m.dmg}）`;
@@ -454,10 +411,7 @@
         };
         row.innerHTML = `
           <span>${s.name}</span>
-          <span style="color:${(() => {
-            const mv = active.moves.find(m => m.id === s.moveId);
-            return mv ? moveColor(mv) : colorFor(s.moveId);
-          })()};">+${s.dmg}</span>
+          <span style="color:${colorFor(s.moveId)};">+${s.dmg}</span>
         `;
         segWrap.appendChild(row);
       });
@@ -495,27 +449,8 @@
       item.style.justifyContent = "space-between";
       item.style.alignItems = "center";
       const left = document.createElement("div");
-      const swatch = document.createElement("span");
-      swatch.className = "swatch";
-      swatch.style.background = enemyColor(e);
-      swatch.style.cursor = "pointer";
-      swatch.style.marginRight = "8px";
-      const cInput = document.createElement("input");
-      cInput.type = "color";
-      cInput.value = enemyColor(e);
-      cInput.className = "colorInputOverlay";
-      cInput.onclick = (ev) => ev.stopPropagation();
-      cInput.onmousedown = (ev) => ev.stopPropagation();
-      cInput.oninput = (ev) => { e.color = ev.target.value; swatch.style.background = enemyColor(e); label.style.color = enemyColor(e); commit(); };
-      const wrapSwatch = document.createElement("span");
-      wrapSwatch.className = "colorWrap";
-      wrapSwatch.style.marginRight = "8px";
-      wrapSwatch.appendChild(cInput);
-      wrapSwatch.appendChild(swatch);
-      left.appendChild(wrapSwatch);
-
       const label = document.createElement("span");
-      label.innerHTML = `<strong style="color:${enemyColor(e)}">${e.name}</strong> <span class="pill">HP ${e.hp}</span>`;
+      label.innerHTML = `<strong>${e.name}</strong> <span class="pill">HP ${e.hp}</span>`;
       left.appendChild(label);
 
       const btn = document.createElement("button");
@@ -597,7 +532,7 @@
         rect.setAttribute("height", (y0 - y1));
         // resolve color: segment may have moveId only; look up move
         const move = active.moves.find(m => m.id === seg.moveId);
-        rect.setAttribute("fill", move ? moveColor(move) : colorFor(seg.moveId));
+        rect.setAttribute("fill", move ? colorFor(move.id) : colorFor(seg.moveId));
         rect.setAttribute("class", "barStroke");
         svg.appendChild(rect);
         acc += seg.dmg;
@@ -634,7 +569,7 @@
       l.setAttribute("y1", y);
       l.setAttribute("y2", y);
       l.setAttribute("class", "hpLine");
-      l.setAttribute("stroke", enemyColor(e));
+      l.setAttribute("stroke", colorFor(e.id));
       svg.appendChild(l);
 
       // avoid label overlap by shifting upward if too close
@@ -649,7 +584,7 @@
       t.setAttribute("x", pad.l + 6);
       t.setAttribute("y", labelY);
       t.setAttribute("class", "hpLabel");
-      t.setAttribute("fill", enemyColor(e));
+      t.setAttribute("fill", colorFor(e.id));
       t.setAttribute("stroke", "#0b0f14");
       t.setAttribute("stroke-width", "3");
       t.setAttribute("stroke-linejoin", "round");
@@ -678,7 +613,7 @@
         segLine.setAttribute("x2", cx + barW*0.4);
         segLine.setAttribute("y1", y);
         segLine.setAttribute("y2", y);
-        segLine.setAttribute("stroke", enemyColor(e));
+        segLine.setAttribute("stroke", colorFor(e.id));
         segLine.setAttribute("stroke-width", 5);
         segLine.setAttribute("stroke-linecap", "round");
         segLine.setAttribute("opacity", "0.95");
@@ -769,7 +704,7 @@
     const hp = Number($("enemyHp").value);
     if (!name || Number.isNaN(hp)) return;
     const id = crypto.randomUUID();
-    active.enemies.push({ id, name, hp, color: colorFor(id) });
+    active.enemies.push({ id, name, hp });
     $("enemyName").value = "";
     $("enemyHp").value = "";
     commit();
