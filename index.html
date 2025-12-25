@@ -856,7 +856,6 @@
       // reach markers on this line for combos that meet/exceed HP
       active.combos.forEach((c, i) => {
         const total = totals[i] || 0;
-        if (total < e.hp) return;
         const cx = pad.l + gap + i*(barW + gap) + barW/2;
         // double-stroked highlight on the HP line to indicate到達
         const backLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
@@ -878,7 +877,7 @@
         segLine.setAttribute("stroke", colorFor(String(e.hp)));
         segLine.setAttribute("stroke-width", 5);
         segLine.setAttribute("stroke-linecap", "round");
-        segLine.setAttribute("opacity", "0.95");
+        segLine.setAttribute("opacity", total >= e.hp ? "0.95" : "0.25");
         svg.appendChild(segLine);
       });
     });
