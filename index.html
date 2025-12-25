@@ -803,8 +803,9 @@
     });
 
     // enemy hp lines (draw last to be前面)
-    let lastLabelY = null;
-    [...active.enemies].sort((a,b) => b.hp - a.hp).forEach((e, enemyIdx) => {
+    const sortedEnemies = [...active.enemies].sort((a,b) => b.hp - a.hp);
+    const labelPositions = [];
+    sortedEnemies.forEach((e) => {
       const y = yToPx(e.hp);
       const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
       l.setAttribute("x1", pad.l);
@@ -815,18 +816,18 @@
       l.setAttribute("stroke", colorFor(e.id));
       svg.appendChild(l);
 
-      // avoid label overlap but keep order: higherHP labels stay上側、低いほど下にずらす
+      // first pass: enforce order top→bottom with minimum gap
       const minGap = 14;
       let labelY = y - 6;
-      if (lastLabelY !== null && labelY <= lastLabelY + minGap) {
-        labelY = lastLabelY + minGap;
+      const prev = labelPositions[labelPositions.length - 1];
+      if (prev !== undefined && labelY <= prev + minGap) {
+        labelY = prev + minGap;
       }
-      labelY = Math.min(labelY, pad.t + plotH - 6);
-      lastLabelY = labelY;
+      labelPositions.push(labelY);
 
       const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
       t.setAttribute("x", pad.l + 6);
-      t.setAttribute("y", labelY);
+      t.setAttribute("y", labelPositions[idx]);
       t.setAttribute("class", "hpLabel");
       t.setAttribute("fill", colorFor(e.id));
       t.setAttribute("stroke", "#0b0f14");
@@ -864,6 +865,20 @@
         svg.appendChild(segLine);
       });
     });
+    // second pass: if pushed beyond bottom, shift all up
+    const maxLabelY = pad.t + plotH - 6;
+    const overflow = labelPositions.length ? labelPositions[labelPositions.length - 1] - maxLabelY : 0;
+    if (overflow > 0) {
+      for (let i=0;i<labelPositions.length;i++) {
+        labelPositions[i] -= overflow;
+        if (i > 0 && labelPositions[i] <= labelPositions[i-1] + 12) {
+          labelPositions[i] = labelPositions[i-1] + 12;
+        }
+      }
+    }
+
+    sortedEnemies.forEach((e, idx) => {
+      const y = yToPx(e.hp);
   }
 
   function renderAll() {
