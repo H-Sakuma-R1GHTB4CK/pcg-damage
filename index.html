@@ -339,18 +339,12 @@
       wrap.appendChild(empty);
     } else {
       active.moves.forEach(m => {
-        const colorInput = document.createElement("input");
-        colorInput.type = "color";
-        colorInput.value = moveColor(m);
-        colorInput.style.display = "none";
-        wrap.appendChild(colorInput);
-
         const btn = document.createElement("button");
         btn.className = "moveBtn";
         btn.style.borderColor = moveColor(m);
         btn.style.color = moveColor(m);
         btn.onclick = (ev) => {
-          if (ev.defaultPrevented) return;
+          if (ev.target.closest(".colorWrap")) return;
           addSegmentToSelected(m);
         };
 
@@ -359,11 +353,12 @@
         const swatch = document.createElement("span");
         swatch.className = "swatch";
         swatch.style.background = moveColor(m);
-        swatch.onclick = (ev) => {
-          ev.stopPropagation();
-          ev.preventDefault();
-          colorInput.showPicker ? colorInput.showPicker() : colorInput.click();
-        };
+        const colorInput = document.createElement("input");
+        colorInput.type = "color";
+        colorInput.value = moveColor(m);
+        colorInput.className = "colorInputOverlay";
+        colorInput.onclick = (ev) => ev.stopPropagation();
+        colorInput.onmousedown = (ev) => ev.stopPropagation();
         colorInput.oninput = (ev) => {
           m.color = ev.target.value;
           btn.style.borderColor = moveColor(m);
@@ -371,6 +366,7 @@
           swatch.style.background = moveColor(m);
           commit();
         };
+        colorWrap.appendChild(colorInput);
         colorWrap.appendChild(swatch);
         btn.appendChild(colorWrap);
 
@@ -493,12 +489,6 @@
     }
 
     active.enemies.forEach(e => {
-      const cInput = document.createElement("input");
-      cInput.type = "color";
-      cInput.value = enemyColor(e);
-      cInput.style.display = "none";
-      list.appendChild(cInput);
-
       const item = document.createElement("div");
       item.className = "item";
       item.style.display = "flex";
@@ -510,15 +500,17 @@
       swatch.style.background = enemyColor(e);
       swatch.style.cursor = "pointer";
       swatch.style.marginRight = "8px";
-      swatch.onclick = (ev) => {
-        ev.stopPropagation();
-        ev.preventDefault();
-        cInput.showPicker ? cInput.showPicker() : cInput.click();
-      };
+      const cInput = document.createElement("input");
+      cInput.type = "color";
+      cInput.value = enemyColor(e);
+      cInput.className = "colorInputOverlay";
+      cInput.onclick = (ev) => ev.stopPropagation();
+      cInput.onmousedown = (ev) => ev.stopPropagation();
       cInput.oninput = (ev) => { e.color = ev.target.value; swatch.style.background = enemyColor(e); label.style.color = enemyColor(e); commit(); };
       const wrapSwatch = document.createElement("span");
       wrapSwatch.className = "colorWrap";
       wrapSwatch.style.marginRight = "8px";
+      wrapSwatch.appendChild(cInput);
       wrapSwatch.appendChild(swatch);
       left.appendChild(wrapSwatch);
 
