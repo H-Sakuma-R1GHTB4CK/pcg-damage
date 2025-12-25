@@ -314,7 +314,8 @@
         enemies: Array.isArray(a.enemies) ? a.enemies.map((e, ei) => ({
           id: e.id || crypto.randomUUID(),
           name: e.name || `仮想敵 ${ei + 1}`,
-          hp: Number(e.hp) || 0
+          hp: Number(e.hp) || 0,
+          color: typeof e.color === "string" ? e.color : undefined
         })) : []
       };
     });
@@ -387,6 +388,9 @@
   }
   function moveColor(move) {
     return (typeof move.color === "string" && move.color) || colorFor(move.id);
+  }
+  function enemyColor(enemy) {
+    return (typeof enemy.color === "string" && enemy.color) || colorFor(String(enemy.hp));
   }
 
   function hexToRgb(hex) {
@@ -711,7 +715,23 @@
         const row = document.createElement("div");
         row.className = "groupRow";
         const label = document.createElement("span");
-        label.innerHTML = `<span style="margin-right:6px;">・</span>${e.name}`;
+        label.innerHTML = `<span style="display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid var(--line);background:${enemyColor(e)};margin-right:8px;"></span>${e.name}`;
+        const btnWrap = document.createElement("div");
+        btnWrap.style.display = "flex";
+        btnWrap.style.gap = "6px";
+
+        const colorHit = document.createElement("button");
+        colorHit.className = "colorHit";
+        colorHit.title = "色を変更";
+        colorHit.onclick = (ev) => {
+          ev.stopPropagation();
+          openPicker(colorHit, (col) => {
+            e.color = col;
+            label.querySelector("span").style.background = enemyColor(e);
+            commit();
+          }, enemyColor(e));
+        };
+
         const btn = document.createElement("button");
         btn.className = "danger";
         btn.textContent = "削除";
@@ -719,8 +739,10 @@
           active.enemies = active.enemies.filter(x => x.id !== e.id);
           commit();
         };
+        btnWrap.appendChild(colorHit);
+        btnWrap.appendChild(btn);
         row.appendChild(label);
-        row.appendChild(btn);
+        row.appendChild(btnWrap);
         rows.appendChild(row);
       });
       card.appendChild(rows);
@@ -831,7 +853,7 @@
       l.setAttribute("y1", y);
       l.setAttribute("y2", y);
       l.setAttribute("class", "hpLine");
-      l.setAttribute("stroke", colorFor(String(e.hp)));
+      l.setAttribute("stroke", enemyColor(e));
       svg.appendChild(l);
 
       // avoid label overlap by shifting upward if too close
@@ -846,7 +868,7 @@
       t.setAttribute("x", pad.l + 6);
       t.setAttribute("y", labelY);
       t.setAttribute("class", "hpLabel");
-      t.setAttribute("fill", colorFor(String(e.hp)));
+      t.setAttribute("fill", enemyColor(e));
       t.setAttribute("stroke", "#0b0f14");
       t.setAttribute("stroke-width", "3");
       t.setAttribute("stroke-linejoin", "round");
@@ -875,7 +897,7 @@
         segLine.setAttribute("x2", cx + half);
         segLine.setAttribute("y1", y);
         segLine.setAttribute("y2", y);
-        segLine.setAttribute("stroke", colorFor(String(e.hp)));
+        segLine.setAttribute("stroke", enemyColor(e));
         segLine.setAttribute("stroke-width", 3);
         segLine.setAttribute("stroke-linecap", "round");
         segLine.setAttribute("opacity", total >= e.hp ? "0.95" : "0");
@@ -967,7 +989,7 @@
     const hp = Number($("enemyHp").value);
     if (!name || Number.isNaN(hp)) return;
     const id = crypto.randomUUID();
-    active.enemies.push({ id, name, hp });
+    active.enemies.push({ id, name, hp, color: enemyColor({ hp }) });
     $("enemyName").value = "";
     $("enemyHp").value = "";
     commit();
