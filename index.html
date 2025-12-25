@@ -64,6 +64,22 @@
       border:none;
       padding:0;
     }
+
+    /* simple palette popover */
+    .picker {
+      position:absolute;
+      background:#0f172a;
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:8px;
+      display:none;
+      z-index:20;
+      box-shadow:0 12px 30px rgba(0,0,0,0.35);
+    }
+    .pickerGrid { display:grid; grid-template-columns:repeat(4, 32px); gap:6px; }
+    .pickerSwatch {
+      width:32px; height:32px; border-radius:8px; border:1px solid var(--line); cursor:pointer;
+    }
     .combos { display:flex; gap:8px; flex-wrap:wrap; }
     .comboCard { min-width: 220px; flex: 1 1 240px; }
     .comboCard.selected { outline:2px solid #2563eb; outline-offset:0; }
@@ -321,6 +337,36 @@
     return (typeof move.color === "string" && move.color) || colorFor(move.id);
   }
 
+  const palette = [
+    "#f97316","#22c55e","#0ea5e9","#a855f7",
+    "#ef4444","#84cc16","#06b6d4","#eab308",
+    "#e11d48","#10b981","#3b82f6","#c084fc"
+  ];
+  const picker = document.createElement("div");
+  picker.className = "picker";
+  picker.innerHTML = `<div class="pickerGrid" id="pickerGrid"></div>`;
+  document.body.appendChild(picker);
+  const pickerGrid = picker.querySelector("#pickerGrid");
+  let pickerTarget = null;
+  palette.forEach(col => {
+    const sw = document.createElement("div");
+    sw.className = "pickerSwatch";
+    sw.style.background = col;
+    sw.onclick = () => {
+      if (!pickerTarget) return;
+      pickerTarget.onPick(col);
+      picker.style.display = "none";
+      pickerTarget = null;
+    };
+    pickerGrid.appendChild(sw);
+  });
+  document.addEventListener("click", (ev) => {
+    if (!picker.contains(ev.target)) {
+      picker.style.display = "none";
+      pickerTarget = null;
+    }
+  });
+
   // -------- render --------
   function renderTabs() {
     const tabs = $("tabs");
@@ -360,26 +406,24 @@
           addSegmentToSelected(m);
         };
 
-        const colorInput = document.createElement("input");
-        colorInput.type = "color";
-        colorInput.value = moveColor(m);
-        colorInput.style.display = "none";
-        colorInput.onclick = (ev) => ev.stopPropagation();
-        colorInput.onmousedown = (ev) => ev.stopPropagation();
-        colorInput.oninput = (ev) => {
-          m.color = ev.target.value;
-          btn.style.borderColor = moveColor(m);
-          btn.style.color = moveColor(m);
-          btn.style.setProperty("--mvcolor", moveColor(m));
-          commit();
-        };
         const colorHit = document.createElement("span");
         colorHit.className = "colorHit";
         colorHit.onclick = (ev) => {
           ev.stopPropagation();
-          colorInput.showPicker ? colorInput.showPicker() : colorInput.click();
+          const rect = colorHit.getBoundingClientRect();
+          picker.style.left = `${rect.left}px`;
+          picker.style.top = `${rect.bottom + 6}px`;
+          picker.style.display = "block";
+          pickerTarget = {
+            onPick: (col) => {
+              m.color = col;
+              btn.style.borderColor = moveColor(m);
+              btn.style.color = moveColor(m);
+              btn.style.setProperty("--mvcolor", moveColor(m));
+              commit();
+            }
+          };
         };
-        btn.appendChild(colorInput);
         btn.appendChild(colorHit);
 
         const label = document.createElement("span");
