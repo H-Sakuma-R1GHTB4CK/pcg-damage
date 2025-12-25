@@ -803,7 +803,7 @@
     });
 
     // enemy hp lines (draw last to be前面)
-    const placedYs = [];
+    let lastLabelY = null;
     [...active.enemies].sort((a,b) => b.hp - a.hp).forEach((e, enemyIdx) => {
       const y = yToPx(e.hp);
       const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
@@ -815,13 +815,14 @@
       l.setAttribute("stroke", colorFor(e.id));
       svg.appendChild(l);
 
-      // avoid label overlap by shifting upward if too close
+      // avoid label overlap but keep order: higherHP labels stay上側、低いほど下にずらす
+      const minGap = 14;
       let labelY = y - 6;
-      for (const py of placedYs) {
-        if (Math.abs(labelY - py) < 14) labelY = py - 14;
+      if (lastLabelY !== null && labelY <= lastLabelY + minGap) {
+        labelY = lastLabelY + minGap;
       }
-      labelY = Math.max(pad.t + 12, labelY);
-      placedYs.push(labelY);
+      labelY = Math.min(labelY, pad.t + plotH - 6);
+      lastLabelY = labelY;
 
       const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
       t.setAttribute("x", pad.l + 6);
