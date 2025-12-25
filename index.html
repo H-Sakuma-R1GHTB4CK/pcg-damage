@@ -819,6 +819,9 @@
     const n = Math.max(active.combos.length, 1);
     const gap = 12;
     const barW = Math.max(18, (plotW - gap*(n+1)) / n);
+    const totalTexts = [];
+    const xLabels = [];
+
     active.combos.forEach((c, i) => {
       const x = pad.l + gap + i*(barW + gap);
 
@@ -879,7 +882,7 @@
       tt.setAttribute("text-anchor", "middle");
       tt.setAttribute("class", "axisText");
       tt.textContent = total ? `${total}` : "";
-      svg.appendChild(tt);
+      totalTexts.push(tt);
 
       // x label
       const xl = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -888,7 +891,7 @@
       xl.setAttribute("text-anchor", "middle");
       xl.setAttribute("class", "axisText");
       xl.textContent = c.name;
-      svg.appendChild(xl);
+      xLabels.push(xl);
     });
 
     // enemy hp lines (draw last to be前面)
@@ -952,6 +955,10 @@
         svg.appendChild(segLine);
       });
     });
+
+    // draw x labels and totals last (forefront)
+    xLabels.forEach(el => svg.appendChild(el));
+    totalTexts.forEach(el => svg.appendChild(el));
   }
 
   function renderAll() {
