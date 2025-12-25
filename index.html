@@ -37,8 +37,9 @@
     .small { font-size:12px; color:var(--muted); }
     .empty { color:var(--muted); font-size:12px; padding:4px 0; }
     .moves { display:flex; gap:8px; flex-wrap:wrap; }
-    .moveBtn { border-style:dashed; padding:8px 10px; }
+    .moveBtn { border-style:dashed; padding:8px 10px; display:flex; align-items:center; gap:8px; }
     .moveBtn:hover { border-color:#64748b; }
+    .swatch { width:14px; height:14px; border-radius:4px; border:1px solid var(--line); display:inline-block; }
     .combos { display:flex; gap:8px; flex-wrap:wrap; }
     .comboCard { min-width: 220px; flex: 1 1 240px; }
     .comboCard.selected { outline:2px solid #2563eb; outline-offset:0; }
@@ -213,7 +214,8 @@
         moves: Array.isArray(a.moves) ? a.moves.map((m, mi) => ({
           id: m.id || crypto.randomUUID(),
           name: m.name || `技 ${mi + 1}`,
-          dmg: Number(m.dmg) || 0
+          dmg: Number(m.dmg) || 0,
+          color: typeof m.color === "string" ? m.color : undefined
         })) : [],
         combos,
         selectedComboId: combos.find(c => c.id === a.selectedComboId)?.id || combos[0].id,
@@ -291,6 +293,9 @@
     const hue = h % 360;
     return hslToHex(hue, 60, 42);
   }
+  function moveColor(move) {
+    return (typeof move.color === "string" && move.color) || colorFor(move.id);
+  }
 
   // -------- render --------
   function renderTabs() {
@@ -323,9 +328,34 @@
       active.moves.forEach(m => {
         const btn = document.createElement("button");
         btn.className = "moveBtn";
-        btn.style.borderColor = colorFor(m.id);
-        btn.style.color = colorFor(m.id);
-        btn.onclick = () => addSegmentToSelected(m);
+        btn.style.borderColor = moveColor(m);
+        btn.style.color = moveColor(m);
+        btn.onclick = (ev) => {
+          if (ev.target.closest(".colorWrap")) return;
+          addSegmentToSelected(m);
+        };
+
+        const colorWrap = document.createElement("span");
+        colorWrap.className = "colorWrap";
+        const swatch = document.createElement("span");
+        swatch.className = "swatch";
+        swatch.style.background = moveColor(m);
+        const colorInput = document.createElement("input");
+        colorInput.type = "color";
+        colorInput.value = moveColor(m);
+        colorInput.className = "colorInputOverlay";
+        colorInput.onclick = (ev) => ev.stopPropagation();
+        colorInput.onmousedown = (ev) => ev.stopPropagation();
+        colorInput.oninput = (ev) => {
+          m.color = ev.target.value;
+          btn.style.borderColor = moveColor(m);
+          btn.style.color = moveColor(m);
+          swatch.style.background = moveColor(m);
+          commit();
+        };
+        colorWrap.appendChild(colorInput);
+        colorWrap.appendChild(swatch);
+        btn.appendChild(colorWrap);
 
         const label = document.createElement("span");
         label.textContent = `${m.name}（${m.dmg}）`;
@@ -411,7 +441,7 @@
         };
         row.innerHTML = `
           <span>${s.name}</span>
-          <span style="color:${colorFor(s.moveId)};">+${s.dmg}</span>
+          <span style="color:${(() => { const mv = active.moves.find(m => m.id === s.moveId); return mv ? moveColor(mv) : colorFor(s.moveId); })()};">+${s.dmg}</span>
         `;
         segWrap.appendChild(row);
       });
@@ -532,7 +562,7 @@
         rect.setAttribute("height", (y0 - y1));
         // resolve color: segment may have moveId only; look up move
         const move = active.moves.find(m => m.id === seg.moveId);
-        rect.setAttribute("fill", move ? colorFor(move.id) : colorFor(seg.moveId));
+        rect.setAttribute("fill", move ? moveColor(move) : colorFor(seg.moveId));
         rect.setAttribute("class", "barStroke");
         svg.appendChild(rect);
         acc += seg.dmg;
@@ -667,7 +697,8 @@
     const name = $("moveName").value.trim();
     const dmg = Number($("moveDmg").value);
     if (!name || Number.isNaN(dmg)) return;
-    active.moves.push({ id: crypto.randomUUID(), name, dmg });
+    const id = crypto.randomUUID();
+    active.moves.push({ id, name, dmg, color: colorFor(id) });
     $("moveName").value = "";
     $("moveDmg").value = "";
     commit();
