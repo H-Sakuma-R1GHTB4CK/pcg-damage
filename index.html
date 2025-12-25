@@ -858,28 +858,28 @@
         const total = totals[i] || 0;
         const cx = pad.l + gap + i*(barW + gap) + barW/2;
         const half = Math.max(4, barW * 0.25);
-        // outlined highlight on the HP line
+        // highlight on the HP line only when reached
         const backLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
         backLine.setAttribute("x1", cx - half);
         backLine.setAttribute("x2", cx + half);
         backLine.setAttribute("y1", y);
         backLine.setAttribute("y2", y);
-        backLine.setAttribute("stroke", colorFor(String(e.hp)));
+        backLine.setAttribute("stroke", "#0b0f14");
         backLine.setAttribute("stroke-width", 6);
         backLine.setAttribute("stroke-linecap", "round");
-        backLine.setAttribute("opacity", total >= e.hp ? "0.95" : "0.25");
+        backLine.setAttribute("opacity", total >= e.hp ? "0.85" : "0");
         svg.appendChild(backLine);
 
-        const hollowLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
-        hollowLine.setAttribute("x1", cx - half + 1);
-        hollowLine.setAttribute("x2", cx + half - 1);
-        hollowLine.setAttribute("y1", y);
-        hollowLine.setAttribute("y2", y);
-        hollowLine.setAttribute("stroke", "#0b1220");
-        hollowLine.setAttribute("stroke-width", 3);
-        hollowLine.setAttribute("stroke-linecap", "round");
-        hollowLine.setAttribute("opacity", total >= e.hp ? "1" : "0.15");
-        svg.appendChild(hollowLine);
+        const segLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        segLine.setAttribute("x1", cx - half);
+        segLine.setAttribute("x2", cx + half);
+        segLine.setAttribute("y1", y);
+        segLine.setAttribute("y2", y);
+        segLine.setAttribute("stroke", colorFor(String(e.hp)));
+        segLine.setAttribute("stroke-width", 3);
+        segLine.setAttribute("stroke-linecap", "round");
+        segLine.setAttribute("opacity", total >= e.hp ? "0.95" : "0");
+        svg.appendChild(segLine);
       });
     });
   }
